@@ -122,7 +122,7 @@ st.markdown("""
     h1, h2, h3 { font-family: 'Inter', sans-serif; letter-spacing: -0.03em; }
     
     .hero-title {
-        font-size: clamp(2.2rem, 4vw, 3.5rem); /* Responsive font scaling */
+        font-size: clamp(2.5rem, 4vw, 4rem); 
         font-weight: 900;
         line-height: 1.2;
         margin-bottom: 1rem;
@@ -130,7 +130,7 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: slideUpFade 0.8s ease-out forwards;
-        word-wrap: break-word; /* Allows safe wrapping on smaller screens */
+        text-align: center;
     }
     
     .hero-subtitle {
@@ -139,6 +139,7 @@ st.markdown("""
         margin-bottom: 2.5rem;
         font-weight: 400;
         line-height: 1.6;
+        text-align: center;
         animation: slideUpFade 1s ease-out forwards;
     }
 
@@ -282,49 +283,46 @@ if st.session_state.username is None:
     # Adjust padding to ensure it aligns nicely with the sidebar
     st.markdown("<style> .block-container { padding-top: 2rem; padding-bottom: 5rem; } </style>", unsafe_allow_html=True)
     
-    # Adjusted column gap to 'medium' to prevent squishing on standard laptop screens
     col1, col2 = st.columns([1.1, 1], gap="medium")
     
     with col1:
-        # Left Side: Title and Subtitle
+        # Note: HTML strings are flushed to the left margin to prevent Streamlit from rendering them as Markdown code blocks
         st.markdown("""
-            <div style="animation: slideUpFade 0.4s ease-out forwards; padding-right: 1rem;">
-                <div class="hero-title" style="text-align: left; margin-top: 0;">Spendra Enterprise</div>
-                <div class="hero-subtitle" style="text-align: left;">
-                    Enterprise-grade financial telemetry. Automate your departmental tracking with neural-network parsing and real-time visualization matrices.
-                </div>
-            </div>
+<div style="animation: slideUpFade 0.4s ease-out forwards; padding-right: 1rem; text-align: center;">
+    <div class="hero-title" style="margin-top: 0; display: flex; justify-content: center;">Spendra Enterprise</div>
+    <div class="hero-subtitle" style="margin: 0 auto 2.5rem auto; max-width: 90%;">
+        Enterprise-grade financial telemetry. Automate your departmental tracking with neural-network parsing and real-time visualization matrices.
+    </div>
+</div>
         """, unsafe_allow_html=True)
         
-        # Left Side: Feature Cards
         st.markdown("""
-        <div style="padding-right: 1rem;">
-            <div class="feature-card" style="animation-delay: 0.2s; margin-bottom: 1.2rem;">
-                <div class="feature-icon"><i class="fas fa-chart-line" style="color: #3b82f6;"></i></div>
-                <div class="feature-text">
-                    <h4>Live Telemetry</h4>
-                    <p>Interactive Plotly infrastructure mapping your fiscal trajectory instantly.</p>
-                </div>
-            </div>
-            
-            <div class="feature-card" style="animation-delay: 0.4s; margin-bottom: 2rem;">
-                <div class="feature-icon"><i class="fas fa-database" style="color: #10b981;"></i></div>
-                <div class="feature-text">
-                    <h4>Secure Infrastructure</h4>
-                    <p>Encrypted JSON backend with compliant CSV payload generation.</p>
-                </div>
-            </div>
+<div style="padding-right: 1rem; display: flex; flex-direction: column; align-items: center;">
+    <div class="feature-card" style="animation-delay: 0.2s; margin-bottom: 1.2rem; width: 100%; max-width: 500px;">
+        <div class="feature-icon"><i class="fas fa-chart-line" style="color: #3b82f6;"></i></div>
+        <div class="feature-text">
+            <h4>Live Telemetry</h4>
+            <p>Interactive Plotly infrastructure mapping your fiscal trajectory instantly.</p>
         </div>
+    </div>
+    
+    <div class="feature-card" style="animation-delay: 0.4s; margin-bottom: 2rem; width: 100%; max-width: 500px;">
+        <div class="feature-icon"><i class="fas fa-database" style="color: #10b981;"></i></div>
+        <div class="feature-text">
+            <h4>Secure Infrastructure</h4>
+            <p>Encrypted JSON backend with compliant CSV payload generation.</p>
+        </div>
+    </div>
+</div>
         """, unsafe_allow_html=True)
         
-        # Left Side: Security Badge
         st.markdown("""
-        <div style="animation: slideUpFade 0.6s ease-out forwards;">
-            <div style="background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 12px 18px; border-radius: 8px; display: inline-block;">
-                <span style="color: #c084fc; font-weight: bold; font-size: 1rem;">🔐 System Locked.</span> 
-                <span style="color: #e2e8f0; margin-left: 8px; font-size: 1rem;">Authenticate in sidebar to access infrastructure.</span>
-            </div>
-        </div>
+<div style="animation: slideUpFade 0.6s ease-out forwards; text-align: center;">
+    <div style="background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 12px 18px; border-radius: 8px; display: inline-block;">
+        <span style="color: #c084fc; font-weight: bold; font-size: 1rem;">🔐 System Locked.</span> 
+        <span style="color: #e2e8f0; margin-left: 8px; font-size: 1rem;">Authenticate in sidebar to access infrastructure.</span>
+    </div>
+</div>
         """, unsafe_allow_html=True)
 
     with col2:
@@ -345,7 +343,7 @@ if st.session_state.username is None:
                 </div>
             </div>
             """,
-            height=500, # Tightened height so it doesn't push the layout around unnecessarily 
+            height=500, 
         )
 
 else:
