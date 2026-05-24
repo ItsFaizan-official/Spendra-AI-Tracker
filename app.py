@@ -122,22 +122,23 @@ st.markdown("""
     h1, h2, h3 { font-family: 'Inter', sans-serif; letter-spacing: -0.03em; }
     
     .hero-title {
-        font-size: 3.5rem; /* <-- Reduced size to keep it on one line */
+        font-size: clamp(2.2rem, 4vw, 3.5rem); /* Responsive font scaling */
         font-weight: 900;
-        line-height: 1.1;
+        line-height: 1.2;
         margin-bottom: 1rem;
         background: linear-gradient(120deg, #c084fc, #ec4899, #818cf8);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: slideUpFade 0.8s ease-out forwards;
-        white-space: nowrap; /* <-- Added this to force it onto one line if possible */
+        word-wrap: break-word; /* Allows safe wrapping on smaller screens */
     }
     
     .hero-subtitle {
-        font-size: 1.2rem;
+        font-size: 1.15rem;
         color: #94a3b8;
         margin-bottom: 2.5rem;
         font-weight: 400;
+        line-height: 1.6;
         animation: slideUpFade 1s ease-out forwards;
     }
 
@@ -165,6 +166,7 @@ st.markdown("""
         background: rgba(255,255,255,0.05);
         height: 55px;
         width: 55px;
+        min-width: 55px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -172,7 +174,7 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.05);
     }
     .feature-text h4 { margin: 0; color: #f8fafc; font-size: 1.1rem; font-weight: 600; }
-    .feature-text p { margin: 0; color: #94a3b8; font-size: 0.9rem; margin-top: 0.3rem; }
+    .feature-text p { margin: 0; color: #94a3b8; font-size: 0.9rem; margin-top: 0.3rem; line-height: 1.4; }
     
     /* Social Icons */
     .social-link {
@@ -277,49 +279,50 @@ else:
 if st.session_state.username is None:
     # --- SPLIT LAYOUT ENTERPRISE LANDING PAGE ---
     
-    # Adjust padding to ensure it aligns nicely with the sidebar and doesn't get cut off at the bottom
-    st.markdown("<style> .block-container { padding-top: 3rem; padding-bottom: 5rem; } </style>", unsafe_allow_html=True)
+    # Adjust padding to ensure it aligns nicely with the sidebar
+    st.markdown("<style> .block-container { padding-top: 2rem; padding-bottom: 5rem; } </style>", unsafe_allow_html=True)
     
-    # Create two columns: Text on the left (slightly wider), Image on the right
-    col1, col2 = st.columns([1.2, 1], gap="large")
+    # Adjusted column gap to 'medium' to prevent squishing on standard laptop screens
+    col1, col2 = st.columns([1.1, 1], gap="medium")
     
     with col1:
         # Left Side: Title and Subtitle
         st.markdown("""
-            <div style="animation: slideUpFade 0.4s ease-out forwards;">
-                <div class="hero-title" style="font-size: 3.8rem; text-align: left; margin-top: 0;">Spendra Enterprise</div>
-                <div class="hero-subtitle" style="text-align: left; font-size: 1.15rem; margin-bottom: 2.5rem; max-width: 90%;">
+            <div style="animation: slideUpFade 0.4s ease-out forwards; padding-right: 1rem;">
+                <div class="hero-title" style="text-align: left; margin-top: 0;">Spendra Enterprise</div>
+                <div class="hero-subtitle" style="text-align: left;">
                     Enterprise-grade financial telemetry. Automate your departmental tracking with neural-network parsing and real-time visualization matrices.
                 </div>
             </div>
         """, unsafe_allow_html=True)
         
-        # Left Side: Feature Cards (Neural Parsing Removed)
-        # Note: We removed the inline flex-direction so they go back to the sleek horizontal layout
+        # Left Side: Feature Cards
         st.markdown("""
-        <div class="feature-card" style="animation-delay: 0.2s; margin-bottom: 1.2rem;">
-            <div class="feature-icon"><i class="fas fa-chart-line" style="color: #3b82f6;"></i></div>
-            <div class="feature-text">
-                <h4 style="font-size: 1.15rem; margin-bottom: 0.2rem;">Live Telemetry</h4>
-                <p style="font-size: 0.95rem;">Interactive Plotly infrastructure mapping your fiscal trajectory instantly.</p>
+        <div style="padding-right: 1rem;">
+            <div class="feature-card" style="animation-delay: 0.2s; margin-bottom: 1.2rem;">
+                <div class="feature-icon"><i class="fas fa-chart-line" style="color: #3b82f6;"></i></div>
+                <div class="feature-text">
+                    <h4>Live Telemetry</h4>
+                    <p>Interactive Plotly infrastructure mapping your fiscal trajectory instantly.</p>
+                </div>
             </div>
-        </div>
-        
-        <div class="feature-card" style="animation-delay: 0.4s; margin-bottom: 2rem;">
-            <div class="feature-icon"><i class="fas fa-database" style="color: #10b981;"></i></div>
-            <div class="feature-text">
-                <h4 style="font-size: 1.15rem; margin-bottom: 0.2rem;">Secure Infrastructure</h4>
-                <p style="font-size: 0.95rem;">Encrypted JSON backend with compliant CSV payload generation.</p>
+            
+            <div class="feature-card" style="animation-delay: 0.4s; margin-bottom: 2rem;">
+                <div class="feature-icon"><i class="fas fa-database" style="color: #10b981;"></i></div>
+                <div class="feature-text">
+                    <h4>Secure Infrastructure</h4>
+                    <p>Encrypted JSON backend with compliant CSV payload generation.</p>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Left Side: Security Badge at the bottom
+        # Left Side: Security Badge
         st.markdown("""
         <div style="animation: slideUpFade 0.6s ease-out forwards;">
-            <div style="background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 15px 20px; border-radius: 8px; display: inline-block;">
-                <span style="color: #c084fc; font-weight: bold; font-size: 1.05rem;">🔐 System Locked.</span> 
-                <span style="color: #e2e8f0; margin-left: 8px; font-size: 1.05rem;">Authenticate in the sidebar to access infrastructure.</span>
+            <div style="background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 12px 18px; border-radius: 8px; display: inline-block;">
+                <span style="color: #c084fc; font-weight: bold; font-size: 1rem;">🔐 System Locked.</span> 
+                <span style="color: #e2e8f0; margin-left: 8px; font-size: 1rem;">Authenticate in sidebar to access infrastructure.</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -335,14 +338,14 @@ if st.session_state.username is None:
                         src="https://assets1.lottiefiles.com/packages/lf20_w51pcehl.json"
                         background="transparent"
                         speed="1"
-                        style="width: 100%; max-width: 650px; animation: slideUpFade 1.0s ease-out forwards;" 
+                        style="width: 100%; max-width: 550px; animation: slideUpFade 1.0s ease-out forwards;" 
                         loop
                         autoplay
                     ></lottie-player>
                 </div>
             </div>
             """,
-            height=650, # Generous height so it doesn't cut off on the bottom
+            height=500, # Tightened height so it doesn't push the layout around unnecessarily 
         )
 
 else:
@@ -856,7 +859,7 @@ else:
             object-fit: cover;
             object-position: top center;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 3px; /* Creates a clean, premium double-ring effect */
+            padding: 3px; 
             background-color: #0f172a;
         }
         
