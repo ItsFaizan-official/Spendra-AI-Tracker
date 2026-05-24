@@ -1,0 +1,60 @@
+{
+    "Atiba": {
+        "2026-05": {
+            "Bills": [],
+            "Food": [],
+            "Fun": [],
+            "Other": [],
+            "Transit": []
+        }
+    },
+    "Faizan": {
+        "2026-05": {
+            "Bills": [
+                {
+                    "category": "Bills",
+                    "item": "cofee",
+                    "note": "per day",
+                    "price": 5.0,
+                    "timestamp": "2026-05-24 19:35:49"
+                }
+            ],
+            "Food": [],
+            "Fun": [
+                {
+                    "category": "Fun",
+                    "item": "Market shopping  Sadar",
+                    "note": "",
+                    "price": 250.0,
+                    "timestamp": "2026-05-24 19:58:58"
+                }
+            ],
+            "Other": [
+                {
+                    "category": "Other",
+                    "item": "bought a cup",
+                    "note": "",
+                    "price": 90.0,
+                    "timestamp": "2026-05-24 20:38:17"
+                },
+                {
+                    "category": "Other",
+                    "item": "Upde   icecream",
+                    "note": "",
+                    "price": 500.0,
+                    "timestamp": "2026-05-24 23:17:10"
+                }
+            ],
+            "Transit": []
+        }
+    },
+    "Fazian": {
+        "2026-05": {
+            "Bills": [],
+            "Food": [],
+            "Fun": [],
+            "Other": [],
+            "Transit": []
+        }
+    }
+}
