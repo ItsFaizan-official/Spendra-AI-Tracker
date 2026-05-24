@@ -278,53 +278,47 @@ else:
 
 # Page content
 if st.session_state.username is None:
-    # --- SPLIT LAYOUT ENTERPRISE LANDING PAGE ---
+    # --- ENTERPRISE LANDING PAGE - ROBUST LAYOUT ---
     
-    # Adjust padding to ensure it aligns nicely with the sidebar
-    st.markdown("<style> .block-container { padding-top: 2rem; padding-bottom: 5rem; } </style>", unsafe_allow_html=True)
+    # 1. Main Container
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    st.markdown('<h1 class="hero-title">Spendra Enterprise</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-subtitle">Enterprise-grade financial telemetry. Automate your departmental tracking with neural-network parsing and real-time visualization matrices.</p>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
     
-    col1, col2 = st.columns([1.1, 1], gap="medium")
+    # 2. Two-Column Split: Cards on Left, Animation on Right
+    col1, col2 = st.columns([1, 1], gap="large")
     
     with col1:
-        # Note: HTML strings are flushed to the left margin to prevent Streamlit from rendering them as Markdown code blocks
+        # Using native markdown for the cards to avoid HTML rendering bugs
         st.markdown("""
-<div style="animation: slideUpFade 0.4s ease-out forwards; padding-right: 1rem; text-align: center;">
-    <div class="hero-title" style="margin-top: 0; display: flex; justify-content: center;">Spendra Enterprise</div>
-    <div class="hero-subtitle" style="margin: 0 auto 2.5rem auto; max-width: 90%;">
-        Enterprise-grade financial telemetry. Automate your departmental tracking with neural-network parsing and real-time visualization matrices.
-    </div>
-</div>
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-chart-line" style="color: #3b82f6;"></i></div>
+            <div class="feature-text">
+                <h4>Live Telemetry</h4>
+                <p>Interactive Plotly infrastructure mapping your fiscal trajectory instantly.</p>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
         
         st.markdown("""
-<div style="padding-right: 1rem; display: flex; flex-direction: column; align-items: center;">
-    <div class="feature-card" style="animation-delay: 0.2s; margin-bottom: 1.2rem; width: 100%; max-width: 500px;">
-        <div class="feature-icon"><i class="fas fa-chart-line" style="color: #3b82f6;"></i></div>
-        <div class="feature-text">
-            <h4>Live Telemetry</h4>
-            <p>Interactive Plotly infrastructure mapping your fiscal trajectory instantly.</p>
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-database" style="color: #10b981;"></i></div>
+            <div class="feature-text">
+                <h4>Secure Infrastructure</h4>
+                <p>Encrypted JSON backend with compliant CSV payload generation.</p>
+            </div>
         </div>
-    </div>
-    
-    <div class="feature-card" style="animation-delay: 0.4s; margin-bottom: 2rem; width: 100%; max-width: 500px;">
-        <div class="feature-icon"><i class="fas fa-database" style="color: #10b981;"></i></div>
-        <div class="feature-text">
-            <h4>Secure Infrastructure</h4>
-            <p>Encrypted JSON backend with compliant CSV payload generation.</p>
-        </div>
-    </div>
-</div>
         """, unsafe_allow_html=True)
         
+        # Security Badge
         st.markdown("""
-<div style="animation: slideUpFade 0.6s ease-out forwards; text-align: center;">
-    <div style="background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 12px 18px; border-radius: 8px; display: inline-block;">
-        <span style="color: #c084fc; font-weight: bold; font-size: 1rem;">🔐 System Locked.</span> 
-        <span style="color: #e2e8f0; margin-left: 8px; font-size: 1rem;">Authenticate in sidebar to access infrastructure.</span>
-    </div>
-</div>
+        <div style="margin-top: 2rem; background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 15px; border-radius: 8px; display: inline-block;">
+            <span style="color: #c084fc; font-weight: bold;">🔐 System Locked.</span> 
+            <span style="color: #e2e8f0; margin-left: 8px;">Authenticate in sidebar to access infrastructure.</span>
+        </div>
         """, unsafe_allow_html=True)
-
+        
     with col2:
         # Right Side: The Lottie Animation
         components.html(
@@ -336,14 +330,14 @@ if st.session_state.username is None:
                         src="https://assets1.lottiefiles.com/packages/lf20_w51pcehl.json"
                         background="transparent"
                         speed="1"
-                        style="width: 100%; max-width: 550px; animation: slideUpFade 1.0s ease-out forwards;" 
+                        style="width: 100%; max-width: 500px;" 
                         loop
                         autoplay
                     ></lottie-player>
                 </div>
             </div>
             """,
-            height=500, 
+            height=450, 
         )
 
 else:
