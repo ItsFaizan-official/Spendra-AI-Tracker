@@ -16,6 +16,10 @@ DB_FILE = "expenses_db.json"
 ENV_FILE = ".env"
 DEFAULT_MODEL = "llama3-8b-8192"
 ALLOWED_CATEGORIES = ["Food", "Bills", "Fun", "Transit", "Other"]
+LOGIN_HISTORY_KEY = "_login_history"
+USER_PROFILE_KEY = "_profile"
+METADATA_KEYS = {LOGIN_HISTORY_KEY}
+USER_METADATA_KEYS = {USER_PROFILE_KEY}
 
 
 def load_dotenv(path: str = ENV_FILE) -> None:
@@ -49,15 +53,25 @@ def get_model_name() -> str:
     return os.environ.get("GROQ_MODEL_NAME", DEFAULT_MODEL)
 
 
+def initialize_db_metadata(db: Dict[str, Any]) -> None:
+    """Initialize database metadata sections if missing."""
+    if LOGIN_HISTORY_KEY not in db:
+        db[LOGIN_HISTORY_KEY] = []
+
+
 def load_database() -> Dict[str, Any]:
     """Load or initialize the JSON database."""
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r", encoding="utf-8") as file:
             try:
-                return json.load(file)
+                db = json.load(file)
             except json.JSONDecodeError:
-                return {}
-    return {}
+                db = {}
+    else:
+        db = {}
+
+    initialize_db_metadata(db)
+    return db
 
 
 def save_database(data: Dict[str, Any]) -> None:
@@ -74,6 +88,47 @@ def normalize_username(raw: str) -> str:
 def current_month_key() -> str:
     """Get current month in YYYY-MM format."""
     return datetime.now().strftime("%Y-%m")
+
+
+def ensure_user_profile(db: Dict[str, Any], username: str) -> None:
+    """Ensure the user's profile metadata exists."""
+    if username not in db:
+        db[username] = {}
+    if USER_PROFILE_KEY not in db[username]:
+        db[username][USER_PROFILE_KEY] = {
+            "created_at": datetime.now().isoformat(sep=" ", timespec="seconds"),
+            "last_login": datetime.now().isoformat(sep=" ", timespec="seconds"),
+            "login_count": 0,
+        }
+
+
+def update_user_profile_login(db: Dict[str, Any], username: str) -> None:
+    """Update the user's profile metadata on login."""
+    ensure_user_profile(db, username)
+    profile = db[username][USER_PROFILE_KEY]
+    profile["last_login"] = datetime.now().isoformat(sep=" ", timespec="seconds")
+    profile["login_count"] = profile.get("login_count", 0) + 1
+
+
+def record_login_event(db: Dict[str, Any], username: str, is_new_user: bool) -> None:
+    """Record a login event for audit history."""
+    initialize_db_metadata(db)
+    update_user_profile_login(db, username)
+    db[LOGIN_HISTORY_KEY].append({
+        "timestamp": datetime.now().isoformat(sep=" ", timespec="seconds"),
+        "username": username,
+        "is_new_user": bool(is_new_user),
+    })
+
+
+def get_login_history(db: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Return the login audit history."""
+    return list(db.get(LOGIN_HISTORY_KEY, []))
+
+
+def get_all_users(db: Dict[str, Any]) -> List[str]:
+    """Return all registered usernames, excluding metadata keys."""
+    return sorted([key for key in db.keys() if key not in METADATA_KEYS])
 
 
 def ensure_user_month(db: Dict[str, Any], username: str, month: str) -> None:
@@ -248,8 +303,11 @@ def get_month_summary(month_data: Dict[str, List[Dict[str, Any]]]) -> Dict[str, 
 
 
 def get_user_months(db: Dict[str, Any], username: str) -> List[str]:
-    """Get list of months for a user."""
-    return sorted(db.get(username, {}) or [])
+    """Get list of months for a user, excluding profile metadata."""
+    return sorted([
+        key for key in (db.get(username, {}) or {}).keys()
+        if key not in USER_METADATA_KEYS
+    ])
 
 
 def export_to_csv(db: Dict[str, Any], username: str, month: str) -> Optional[str]:
