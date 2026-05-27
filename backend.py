@@ -235,23 +235,59 @@ def analyze_expense_with_ai(user_input: str) -> Optional[Dict[str, Any]]:
             "Do not add extra text. Example: {\"item\": \"coffee\", \"price\": 4.50, \"category\": \"Food\"}."
         )
 
-        try:
-            client = Groq(api_key=api_key)
-            response = client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": prompt},
-                    {"role": "user", "content": user_input},
-                ],
-                model=get_model_name(),
-                temperature=0.0,
-            )
-            content = response.choices[0].message.content
-            parsed = safe_parse_json(content)
-            data = validate_expense_data(parsed)
-            if data:
-                return data
-        except Exception:
-            pass
+        # Attempt a few retries for transient network issues
+        max_attempts = 3
+        attempt = 0
+        last_exception = None
+        while attempt < max_attempts:
+            attempt += 1
+            try:
+                client = Groq(api_key=api_key)
+                response = client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": user_input},
+                    ],
+                    model=get_model_name(),
+                    temperature=0.0,
+                )
+
+                # Defensive access to expected fields
+                content = None
+                if hasattr(response, 'choices') and response.choices:
+                    choice = response.choices[0]
+                    # handle different response shapes
+                    if hasattr(choice, 'message') and getattr(choice.message, 'content', None) is not None:
+                        content = choice.message.content
+                    elif isinstance(choice, dict) and 'message' in choice and isinstance(choice['message'], dict):
+                        content = choice['message'].get('content')
+                    elif isinstance(choice, dict) and 'text' in choice:
+                        content = choice.get('text')
+
+                if not content:
+                    raise RuntimeError("Groq response missing content")
+
+                parsed = safe_parse_json(content)
+                data = validate_expense_data(parsed)
+                if data:
+                    return data
+                # If parsing failed, continue to fallback after logging
+                last_exception = RuntimeError("AI returned unparsable JSON")
+                break
+            except Exception as exc:
+                last_exception = exc
+                # Log the exception to a file for debugging
+                try:
+                    with open("groq_errors.log", "a", encoding="utf-8") as logf:
+                        logf.write(f"{datetime.now().isoformat()} - attempt {attempt} - {repr(exc)}\n")
+                except Exception:
+                    pass
+                # small backoff before retrying
+                if attempt < max_attempts:
+                    import time
+                    time.sleep(0.8 * attempt)
+                else:
+                    break
 
     # Local fallback parser if AI fails or API is unavailable
     fallback = extract_expense_from_text(user_input)
