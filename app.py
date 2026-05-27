@@ -15,6 +15,9 @@ from backend import (
     add_expense_record,
     get_month_summary,
     get_user_months,
+    get_all_users,
+    record_login_event,
+    get_login_history,
     export_to_csv,
     format_currency,
     get_all_expenses,
@@ -122,24 +125,27 @@ st.markdown("""
     h1, h2, h3 { font-family: 'Inter', sans-serif; letter-spacing: -0.03em; }
     
     .hero-title {
-        font-size: clamp(2.5rem, 4vw, 4rem); 
+        font-size: clamp(2.2rem, 5vw, 3.8rem);
         font-weight: 900;
-        line-height: 1.2;
+        line-height: 1.05;
         margin-bottom: 1rem;
         background: linear-gradient(120deg, #c084fc, #ec4899, #818cf8);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: slideUpFade 0.8s ease-out forwards;
-        text-align: center;
+        white-space: normal; /* allow wrapping on narrow viewports */
+        overflow-wrap: break-word;
+        word-break: break-word;
+        max-width: 100%;
+        position: relative;
+        z-index: 3; /* ensure title is above adjacent content */
     }
     
     .hero-subtitle {
-        font-size: 1.15rem;
+        font-size: 1.2rem;
         color: #94a3b8;
         margin-bottom: 2.5rem;
         font-weight: 400;
-        line-height: 1.6;
-        text-align: center;
         animation: slideUpFade 1s ease-out forwards;
     }
 
@@ -167,7 +173,6 @@ st.markdown("""
         background: rgba(255,255,255,0.05);
         height: 55px;
         width: 55px;
-        min-width: 55px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -175,7 +180,7 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.05);
     }
     .feature-text h4 { margin: 0; color: #f8fafc; font-size: 1.1rem; font-weight: 600; }
-    .feature-text p { margin: 0; color: #94a3b8; font-size: 0.9rem; margin-top: 0.3rem; line-height: 1.4; }
+    .feature-text p { margin: 0; color: #94a3b8; font-size: 0.9rem; margin-top: 0.3rem; }
     
     /* Social Icons */
     .social-link {
@@ -213,6 +218,10 @@ if "current_month" not in st.session_state:
     st.session_state.current_month = current_month_key()
 if "parsed_expense" not in st.session_state:
     st.session_state.parsed_expense = None
+if "parsed_expenses" not in st.session_state:
+    st.session_state.parsed_expenses = []
+if "parsed_errors" not in st.session_state:
+    st.session_state.parsed_errors = []
 
 # Sidebar for navigation
 st.sidebar.title("💠 Enterprise Menu")
@@ -227,16 +236,24 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("<h4 style='margin-bottom: 0;'>🔐 Secure Access</h4>", unsafe_allow_html=True)
 
 if st.session_state.username is None:
-    username_input = st.sidebar.text_input("Enter SSO / Username:", key="user_input", placeholder="e.g. mfk_admin")
+    username_input = st.sidebar.text_input("Enter SSO / Username:", key="user_input", placeholder="e.g. your first name or corporate ID")
     if st.sidebar.button("Authenticate", use_container_width=True):
         if username_input.strip():
-            st.session_state.username = normalize_username(username_input)
+            normalized_username = normalize_username(username_input)
+            is_new_user = normalized_username not in st.session_state.db
+            st.session_state.username = normalized_username
             ensure_user_month(st.session_state.db, st.session_state.username, st.session_state.current_month)
+            record_login_event(st.session_state.db, st.session_state.username, is_new_user)
             save_database(st.session_state.db)
+            st.session_state.show_new_user_notification = is_new_user
             st.rerun()
         else:
             st.sidebar.error("Credentials cannot be empty")
 else:
+    if st.session_state.get("show_new_user_notification", False):
+        st.sidebar.success("✅ New user account created and signed in.")
+        st.session_state.show_new_user_notification = False
+
     st.sidebar.markdown(f"""
     <div style='background:rgba(168,85,247,0.15); padding:10px; border-radius:8px; border:1px solid rgba(168,85,247,0.3); margin-top:10px; margin-bottom:15px;'>
         <div style='font-size:0.8rem; color:#c084fc;'>Active Session</div>
@@ -261,13 +278,24 @@ else:
         ensure_user_month(st.session_state.db, st.session_state.username, selected_month)
         save_database(st.session_state.db)
     
+    # Allow the user to type a new fiscal period and then press the button to open it.
+    new_month = st.sidebar.text_input("Format (YYYY-MM):", key="new_month_input")
     if st.sidebar.button("➕ Open New Fiscal Period", use_container_width=True):
-        new_month = st.sidebar.text_input("Format (YYYY-MM):", key="new_month_input")
         if new_month:
-            ensure_user_month(st.session_state.db, st.session_state.username, new_month)
-            save_database(st.session_state.db)
-            st.session_state.current_month = new_month
-            st.rerun()
+            parts = new_month.split("-")
+            is_valid_format = (
+                len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit()
+                and len(parts[0]) == 4 and len(parts[1]) == 2
+            )
+            if is_valid_format:
+                ensure_user_month(st.session_state.db, st.session_state.username, new_month)
+                save_database(st.session_state.db)
+                st.session_state.current_month = new_month
+                st.rerun()
+            else:
+                st.sidebar.error("Invalid format. Use YYYY-MM (e.g. 2026-07).")
+        else:
+            st.sidebar.error("Enter a fiscal period before opening a new one.")
     
     st.sidebar.markdown("<br>", unsafe_allow_html=True)
     if st.sidebar.button("🚪 Terminate Session", use_container_width=True, type="secondary"):
@@ -278,47 +306,54 @@ else:
 
 # Page content
 if st.session_state.username is None:
-    # --- ENTERPRISE LANDING PAGE - ROBUST LAYOUT ---
+    # --- SPLIT LAYOUT ENTERPRISE LANDING PAGE ---
     
-    # 1. Main Container
-    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
-    st.markdown('<h1 class="hero-title">Spendra Enterprise</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="hero-subtitle">Enterprise-grade financial telemetry. Automate your departmental tracking with neural-network parsing and real-time visualization matrices.</p>', unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Adjust padding to ensure it aligns nicely with the sidebar and doesn't get cut off at the bottom
+    st.markdown("<style> .block-container { padding-top: 3rem; padding-bottom: 5rem; } </style>", unsafe_allow_html=True)
     
-    # 2. Two-Column Split: Cards on Left, Animation on Right
-    col1, col2 = st.columns([1, 1], gap="large")
-    
+    # Centered hero header (full-width), then two columns: Text on the left, Image on the right
+    st.markdown("""
+        <div style="text-align:center; animation: slideUpFade 0.4s ease-out forwards; margin-bottom: 2.5rem;">
+            <div class="hero-title" style="margin-top: 0;">Spendra Enterprise</div>
+            <div class="hero-subtitle" style="margin: 0 auto; max-width: 880px; font-size: 1.15rem;">
+                Enterprise-grade financial telemetry. Automate your departmental tracking with neural-network parsing and real-time visualization matrices.
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1.2, 1], gap="large")
+
     with col1:
-        # Using native markdown for the cards to avoid HTML rendering bugs
+        # Left Side: Feature Cards (Neural Parsing Removed)
+        # Note: We removed the inline flex-direction so they go back to the sleek horizontal layout
         st.markdown("""
-        <div class="feature-card">
+        <div class="feature-card" style="animation-delay: 0.2s; margin-bottom: 1.2rem;">
             <div class="feature-icon"><i class="fas fa-chart-line" style="color: #3b82f6;"></i></div>
             <div class="feature-text">
-                <h4>Live Telemetry</h4>
-                <p>Interactive Plotly infrastructure mapping your fiscal trajectory instantly.</p>
+                <h4 style="font-size: 1.15rem; margin-bottom: 0.2rem;">Live Telemetry</h4>
+                <p style="font-size: 0.95rem;">Interactive Plotly infrastructure mapping your fiscal trajectory instantly.</p>
             </div>
         </div>
-        """, unsafe_allow_html=True)
         
-        st.markdown("""
-        <div class="feature-card">
+        <div class="feature-card" style="animation-delay: 0.4s; margin-bottom: 2rem;">
             <div class="feature-icon"><i class="fas fa-database" style="color: #10b981;"></i></div>
             <div class="feature-text">
-                <h4>Secure Infrastructure</h4>
-                <p>Encrypted JSON backend with compliant CSV payload generation.</p>
+                <h4 style="font-size: 1.15rem; margin-bottom: 0.2rem;">Secure Infrastructure</h4>
+                <p style="font-size: 0.95rem;">Encrypted JSON backend with compliant CSV payload generation.</p>
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Security Badge
+        # Left Side: Security Badge at the bottom
         st.markdown("""
-        <div style="margin-top: 2rem; background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 15px; border-radius: 8px; display: inline-block;">
-            <span style="color: #c084fc; font-weight: bold;">🔐 System Locked.</span> 
-            <span style="color: #e2e8f0; margin-left: 8px;">Authenticate in sidebar to access infrastructure.</span>
+        <div style="animation: slideUpFade 0.6s ease-out forwards;">
+            <div style="background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 15px 20px; border-radius: 8px; display: inline-block;">
+                <span style="color: #c084fc; font-weight: bold; font-size: 1.05rem;">🔐 System Locked.</span> 
+                <span style="color: #e2e8f0; margin-left: 8px; font-size: 1.05rem;">Authenticate in the sidebar to access infrastructure.</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
-        
+
     with col2:
         # Right Side: The Lottie Animation
         components.html(
@@ -330,14 +365,14 @@ if st.session_state.username is None:
                         src="https://assets1.lottiefiles.com/packages/lf20_w51pcehl.json"
                         background="transparent"
                         speed="1"
-                        style="width: 100%; max-width: 500px;" 
+                        style="width: 100%; max-width: 650px; animation: slideUpFade 1.0s ease-out forwards;" 
                         loop
                         autoplay
                     ></lottie-player>
                 </div>
             </div>
             """,
-            height=450, 
+            height=650, # Generous height so it doesn't cut off on the bottom
         )
 
 else:
@@ -471,30 +506,48 @@ else:
             if st.button("🤖 Engage AI Processor", use_container_width=True, type="primary", key="parse_button"):
                 if description.strip():
                     with st.spinner("Neural network processing natural language..."):
-                        parsed = analyze_expense_with_ai(description)
-                        st.session_state.parsed_expense = parsed
+                        lines = [line.strip() for line in description.splitlines() if line.strip()]
+                        parsed_results = []
+                        parse_errors = []
+                        for line in lines:
+                            parsed = analyze_expense_with_ai(line)
+                            if parsed:
+                                parsed_results.append(parsed)
+                            else:
+                                parse_errors.append(line)
+
+                        st.session_state.parsed_expenses = parsed_results
+                        st.session_state.parsed_errors = parse_errors
                         st.session_state.parse_attempted = True
                 else:
                     st.error("Input stream empty. Provide text payload.")
 
-            if st.session_state.parsed_expense:
-                parsed = st.session_state.parsed_expense
-                
-                st.markdown(f"""
-                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; animation: slideUpFade 0.4s ease-out forwards;">
-                    <div style="color: #10b981; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-check-circle"></i> NLP Extraction Successful</div>
-                    <h3 style="margin-top:0; color:#f8fafc;">{parsed['item']}</h3>
-                    <p style="font-size: 1.4rem; font-weight: 800; color: #10b981; margin-bottom: 5px;">{format_currency(parsed['price'])}</p>
-                    <div style="display: flex; gap: 15px; font-size: 0.9rem; color: #94a3b8;">
-                        <span><i class="fas fa-folder"></i> <b>{parsed['category']}</b></span>
-                        <span><i class="fas fa-comment-alt"></i> {parsed.get('note', 'N/A')}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            if st.session_state.parsed_expenses:
+                st.success(f"✅ NLP extracted {len(st.session_state.parsed_expenses)} item(s) from input.")
 
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    if st.button("✅ Authorize & Commit", use_container_width=True, type="primary", key="confirm_add"):
+                for idx, parsed in enumerate(st.session_state.parsed_expenses, start=1):
+                    st.markdown(f"""
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem; animation: slideUpFade 0.4s ease-out forwards;">
+                        <div style="color: #10b981; font-weight: bold; margin-bottom: 10px;"><i class="fas fa-check-circle"></i> Item {idx}</div>
+                        <h3 style="margin-top:0; color:#f8fafc;">{parsed['item']}</h3>
+                        <p style="font-size: 1.4rem; font-weight: 800; color: #10b981; margin-bottom: 5px;">{format_currency(parsed['price'])}</p>
+                        <div style="display: flex; gap: 15px; font-size: 0.9rem; color: #94a3b8;">
+                            <span><i class="fas fa-folder"></i> <b>{parsed['category']}</b></span>
+                            <span><i class="fas fa-comment-alt"></i> {parsed.get('note', 'N/A')}</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                if st.session_state.parsed_errors:
+                    st.warning(
+                        "The following lines could not be parsed and were skipped:",
+                        icon="⚠️"
+                    )
+                    for error_line in st.session_state.parsed_errors:
+                        st.markdown(f"- `{error_line}`")
+
+                if st.button("✅ Authorize & Commit All", use_container_width=True, type="primary", key="confirm_add"):
+                    for parsed in st.session_state.parsed_expenses:
                         add_expense_record(
                             st.session_state.db,
                             st.session_state.username,
@@ -504,18 +557,24 @@ else:
                             parsed['category'],
                             parsed.get('note', ''),
                         )
-                        st.success("Ledger committed to secure storage.")
-                        st.session_state.parsed_expense = None
-                        st.session_state.parse_attempted = False
-                        st.rerun()
-                with col_b:
-                    if st.button("❌ Discard", use_container_width=True, type="secondary"):
-                        st.session_state.parsed_expense = None
-                        st.session_state.parse_attempted = False
-                        st.rerun()
+                    st.success("Ledger committed to secure storage.")
+                    st.session_state.parsed_expenses = []
+                    st.session_state.parsed_errors = []
+                    st.session_state.parse_attempted = False
+                    st.rerun()
+
+                if st.button("❌ Discard All", use_container_width=True, type="secondary", key="discard_all"):
+                    st.session_state.parsed_expenses = []
+                    st.session_state.parsed_errors = []
+                    st.session_state.parse_attempted = False
+                    st.rerun()
 
             elif st.session_state.get("parse_attempted", False):
-                st.warning("NLP Engine failed to parse context. Awaiting manual override.")
+                st.warning("NLP Engine failed to parse the submitted text. Awaiting manual override.")
+                if st.session_state.parsed_errors:
+                    st.markdown("**Failed lines:**")
+                    for error_line in st.session_state.parsed_errors:
+                        st.markdown(f"- `{error_line}`")
                 with st.expander("Manual Override Protocol"):
                     item = st.text_input("Asset Name", key="fallback_item")
                     price = st.number_input("Value ($)", min_value=0.0, step=0.01, key="fallback_price")
@@ -530,7 +589,8 @@ else:
                                 item, price, category, note,
                             )
                             st.success(f"✅ Executed: {item} logged.")
-                            st.session_state.parsed_expense = None
+                            st.session_state.parsed_expenses = []
+                            st.session_state.parsed_errors = []
                             st.session_state.parse_attempted = False
                             st.rerun()
 
@@ -767,20 +827,62 @@ else:
             """, unsafe_allow_html=True)
             
             api_key = get_api_key()
-            if api_key:
+            try:
+                from backend import Groq as _Groq
+            except Exception:
+                _Groq = None
+
+            sdk_installed = _Groq is not None
+
+            # Show a richer status block with SDK + API key + recent error logs
+            if sdk_installed and api_key:
                 st.markdown("""
                 <div class="status-indicator status-online">
                     <div class="pulse-dot pulse-green"></div>
                     Neural Engine (Groq API): Authenticated
                 </div>
-                </div> """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+            elif sdk_installed and not api_key:
+                st.markdown("""
+                <div class="status-indicator status-offline">
+                    <div class="pulse-dot" style="background:#f59e0b;"></div>
+                    Neural Engine (Groq API): SDK installed, API key missing
+                </div>
+                """, unsafe_allow_html=True)
+            elif not sdk_installed and api_key:
+                st.markdown("""
+                <div class="status-indicator status-offline">
+                    <div class="pulse-dot" style="background:#ef4444;"></div>
+                    Neural Engine (Groq API): API key present, SDK not installed
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.markdown("""
                 <div class="status-indicator status-offline">
                     <div class="pulse-dot" style="background:#ef4444;"></div>
                     Neural Engine (Groq API): Disconnected
                 </div>
-                </div> """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+
+            # Show recent Groq error logs if available to help debugging
+            try:
+                log_excerpt = ""
+                if os.path.exists("groq_errors.log"):
+                    with open("groq_errors.log", "r", encoding="utf-8") as lf:
+                        lines = lf.readlines()[-6:]
+                        log_excerpt = "".join(lines).strip()
+
+                if log_excerpt:
+                    st.markdown("""
+                    <div style='margin-top:10px; background: rgba(0,0,0,0.35); padding:10px; border-radius:6px; font-size:0.9rem;'>
+                        <strong style='color:#fbbf24;'>Recent Groq Errors:</strong>
+                        <pre style='color:#fee2e2; white-space:pre-wrap; margin-top:6px;'>{}</pre>
+                    </div>
+                    """.format(log_excerpt), unsafe_allow_html=True)
+            except Exception:
+                pass
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with col2:
             st.markdown("""
@@ -819,8 +921,36 @@ else:
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="arch-grid">
+            <div class="arch-card">
+                <div class="arch-label">Registered Users</div>
+                <div class="arch-value">{}</div>
+            </div>
+            <div class="arch-card">
+                <div class="arch-label">Recorded Logins</div>
+                <div class="arch-value">{}</div>
+            </div>
+        </div>
+        """.format(len(get_all_users(st.session_state.db)), len(get_login_history(st.session_state.db))), unsafe_allow_html=True)
         
-        # 3. Lead Architect Card
+        # 3. Login Audit Trail
+        st.markdown("---")
+        st.subheader("👥 Login Audit Trail")
+
+        login_history = get_login_history(st.session_state.db)
+        if not login_history:
+            st.info("No login activity recorded yet.")
+        else:
+            login_df = pd.DataFrame(login_history)
+            if not login_df.empty:
+                login_df["Timestamp"] = pd.to_datetime(login_df["timestamp"])
+                login_df["New User"] = login_df["is_new_user"].map({True: "Yes", False: "No"})
+                login_df = login_df[["Timestamp", "username", "New User"]]
+                login_df.columns = ["Timestamp", "Username", "New User"]
+                st.dataframe(login_df.sort_values(by="Timestamp", ascending=False), use_container_width=True, hide_index=True)
+
         st.markdown("---")
         st.subheader("👤 Lead Architect")
         
@@ -851,7 +981,7 @@ else:
             object-fit: cover;
             object-position: top center;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 3px; 
+            padding: 3px; /* Creates a clean, premium double-ring effect */
             background-color: #0f172a;
         }
         
